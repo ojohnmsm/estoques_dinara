@@ -17,7 +17,7 @@ export default async function PaginaSabor({ params }: PageProps<"/mais/sabores/[
 
   return (
     <>
-      <Cabecalho titulo={sabor.data.nome} voltar="/mais/sabores" />
+      <Cabecalho titulo={sabor.data.nome} voltar="/mais/sabores" ajuda="sabor-form" />
       <FormSabor
         sabor={{
           ...sabor.data,

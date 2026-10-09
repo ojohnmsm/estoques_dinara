@@ -34,7 +34,7 @@ export function FormProducao({ sabor, hoje }: { sabor: SaborComEstoque; hoje: st
         <label className="rotulo" htmlFor="data">Data</label>
         <input id="data" name="data" type="date" max={hoje} defaultValue={hoje} required className="campo" />
       </div>
-      <div>
+      <div data-tour="produzir-receitas">
         <label className="rotulo" htmlFor="receitas_feitas">Quantas receitas você fez?</label>
         <input
           id="receitas_feitas"
@@ -51,7 +51,7 @@ export function FormProducao({ sabor, hoje }: { sabor: SaborComEstoque; hoje: st
         />
         <p className="mt-1 text-sm text-neutral-500">Pode ser 0,5 (meia receita) ou 2 (receita dobrada).</p>
       </div>
-      <div>
+      <div data-tour="produzir-qtd">
         <label className="rotulo" htmlFor="qtd_produzida">Quantos sacolés saíram de fato?</label>
         <input
           id="qtd_produzida"
@@ -67,7 +67,7 @@ export function FormProducao({ sabor, hoje }: { sabor: SaborComEstoque; hoje: st
         />
       </div>
 
-      <div className="cartao bg-ceu">
+      <div className="cartao bg-ceu" data-tour="produzir-custo">
         <p className="flex justify-between"><span>Custo do lote</span><strong>{brl(custoTotal)}</strong></p>
         <p className="flex justify-between"><span>Custo por sacolé</span><strong>{brl(custoUnit)}</strong></p>
         {sabor.custo_incompleto && (

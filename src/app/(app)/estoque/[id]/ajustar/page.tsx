@@ -9,7 +9,7 @@ export default async function PaginaAjustar({ params }: PageProps<"/estoque/[id]
   if (!sabor) notFound();
   return (
     <>
-      <Cabecalho titulo={`Ajustar ${sabor.nome}`} voltar={`/estoque/${id}`} />
+      <Cabecalho titulo={`Ajustar ${sabor.nome}`} voltar={`/estoque/${id}`} ajuda="ajustar" />
       <FormAjuste saborId={sabor.id} estoque={sabor.estoque} />
     </>
   );

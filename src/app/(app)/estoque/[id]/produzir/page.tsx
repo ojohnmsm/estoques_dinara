@@ -10,7 +10,7 @@ export default async function PaginaProduzir({ params }: PageProps<"/estoque/[id
   if (!sabor) notFound();
   return (
     <>
-      <Cabecalho titulo={`Produzi ${sabor.nome}`} voltar={`/estoque/${id}`} />
+      <Cabecalho titulo={`Produzi ${sabor.nome}`} voltar={`/estoque/${id}`} ajuda="produzir" />
       <FormProducao sabor={sabor} hoje={hojeSP()} />
     </>
   );

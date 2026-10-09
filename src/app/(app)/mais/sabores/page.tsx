@@ -7,9 +7,9 @@ export default async function PaginaSabores() {
   const sabores = await listarSabores();
   return (
     <>
-      <Cabecalho titulo="Sabores" voltar="/mais" acao={<Link href="/mais/sabores/novo" className="btn-primario min-h-10 px-3 text-sm">+ Novo</Link>} />
+      <Cabecalho titulo="Sabores" voltar="/mais" ajuda="sabores" acao={<Link href="/mais/sabores/novo" data-tour="sabores-novo" className="btn-primario min-h-10 px-3 text-sm">+ Novo</Link>} />
       {sabores.length === 0 && <p className="text-neutral-500">Nenhum sabor cadastrado.</p>}
-      <ul className="space-y-2">
+      <ul className="space-y-2" data-tour="sabores-lista">
         {sabores.map((s) => {
           const custo = s.custo_receita / s.rendimento_esperado;
           const margem = s.preco_venda > 0 ? (s.preco_venda - custo) / s.preco_venda : null;

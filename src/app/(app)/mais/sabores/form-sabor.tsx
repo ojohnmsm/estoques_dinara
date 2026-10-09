@@ -65,7 +65,7 @@ export function FormSabor({ sabor, ingredientes }: { sabor?: Sabor; ingredientes
         <label className="rotulo" htmlFor="nome">Nome do sabor</label>
         <input id="nome" className="campo" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Morango com leite condensado" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3" data-tour="sabor-preco">
         <div>
           <label className="rotulo" htmlFor="preco">Preço de venda (R$)</label>
           <input id="preco" inputMode="decimal" className="campo" value={preco} onChange={(e) => setPreco(e.target.value)} />
@@ -76,7 +76,7 @@ export function FormSabor({ sabor, ingredientes }: { sabor?: Sabor; ingredientes
         </div>
       </div>
 
-      <section className="cartao space-y-3">
+      <section className="cartao space-y-3" data-tour="sabor-receita">
         <h2 className="font-semibold">Receita</h2>
         <div>
           <label className="rotulo" htmlFor="rendimento">Uma receita rende quantos sacolés?</label>
@@ -127,14 +127,14 @@ export function FormSabor({ sabor, ingredientes }: { sabor?: Sabor; ingredientes
         )}
       </section>
 
-      <section className="cartao space-y-1 bg-ceu">
+      <section className="cartao space-y-1 bg-ceu" data-tour="sabor-custo">
         <p className="flex justify-between"><span>Custo da receita</span><strong>{brl(receita.total)}</strong></p>
         <p className="flex justify-between"><span>Custo por sacolé</span><strong>{custoSacole == null ? "—" : brl(custoSacole)}</strong></p>
         <p className="flex justify-between"><span>Margem</span><strong>{pct(margem)}</strong></p>
         {receita.incompleto && <p className="pt-1 text-sm text-amber-800">Algum ingrediente ainda não tem preço: registre uma compra dele.</p>}
       </section>
 
-      <label className="flex items-center gap-3">
+      <label className="flex items-center gap-3" data-tour="sabor-ativo">
         <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} className="h-5 w-5 accent-rosa-forte" />
         Sabor ativo (aparece na tela de venda)
       </label>

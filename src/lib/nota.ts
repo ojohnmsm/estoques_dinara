@@ -17,6 +17,7 @@ export type ItemLido = {
 };
 
 export type NotaLida = {
+  chave_acesso: string | null; // 44 dígitos da NFC-e, só se o dígito verificador conferir
   data: string | null; // AAAA-MM-DD
   local: string | null;
   total: number | null;
@@ -30,6 +31,7 @@ const ouNulo = (schema: object) => ({ anyOf: [schema, { type: "null" }] });
 export const ESQUEMA_NOTA = {
   type: "object",
   properties: {
+    chave_acesso: ouNulo({ type: "string", description: "Chave de acesso da NFC-e: 44 dígitos, sem espaços" }),
     data: ouNulo({ type: "string", description: "Data da compra no formato AAAA-MM-DD" }),
     local: ouNulo({ type: "string", description: "Nome curto do estabelecimento" }),
     total: ouNulo({ type: "number", description: "Valor total pago" }),
@@ -55,7 +57,7 @@ export const ESQUEMA_NOTA = {
       },
     },
   },
-  required: ["data", "local", "total", "itens"],
+  required: ["chave_acesso", "data", "local", "total", "itens"],
 };
 
 export function promptNota(ingredientes: { nome: string; unidade_base: Unidade }[]) {
@@ -80,10 +82,22 @@ Regras:
 - "nao_e_ingrediente": true para sacola, frete, taxa, produtos de limpeza e qualquer coisa que
   não vá numa receita de comida.
 - "data": data de emissão em AAAA-MM-DD. "total": valor total pago.
+- "chave_acesso": os 44 dígitos impressos perto de "Consulte pela Chave de Acesso", só os números.
+  Se algum dígito estiver ilegível, use null.
 - Se um valor estiver ilegível, use null (ou 0 em quantidade/valor) em vez de chutar.
 
 Ingredientes cadastrados:
 ${lista}`;
+}
+
+/** Confere o dígito verificador (módulo 11) da chave de acesso da NF-e/NFC-e. */
+export function chaveValida(chave: string) {
+  if (!/^\d{44}$/.test(chave)) return false;
+  const pesos = [2, 3, 4, 5, 6, 7, 8, 9];
+  let soma = 0;
+  for (let i = 0; i < 43; i++) soma += Number(chave[42 - i]) * pesos[i % 8];
+  const resto = 11 - (soma % 11);
+  return (resto >= 10 ? 0 : resto) === Number(chave[43]);
 }
 
 /** Normaliza texto de nota para servir de chave da memória produto → ingrediente. */
@@ -189,7 +203,9 @@ export function limparNota(bruta: unknown): NotaLida {
   const n = (bruta ?? {}) as Partial<NotaLida>;
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
   const itens = Array.isArray(n.itens) ? n.itens : [];
+  const chave = typeof n.chave_acesso === "string" ? n.chave_acesso.replace(/\D/g, "") : "";
   return {
+    chave_acesso: chaveValida(chave) ? chave : null,
     data: typeof n.data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(n.data) ? n.data : null,
     local: typeof n.local === "string" && n.local.trim() ? n.local.trim().slice(0, 100) : null,
     total: typeof n.total === "number" && Number.isFinite(n.total) ? n.total : null,

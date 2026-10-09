@@ -43,8 +43,8 @@ export default async function PaginaResumo({ searchParams }: PageProps<"/resumo"
 
   return (
     <>
-      <Cabecalho titulo="Resumo" />
-      <nav className="mb-3 grid grid-cols-4 gap-1 rounded-xl bg-neutral-100 p-1">
+      <Cabecalho titulo="Resumo" ajuda="resumo" />
+      <nav data-tour="resumo-periodo" className="mb-3 grid grid-cols-4 gap-1 rounded-xl bg-neutral-100 p-1">
         {PERIODOS.map((p) => (
           <Link
             key={p.valor}
@@ -68,14 +68,14 @@ export default async function PaginaResumo({ searchParams }: PageProps<"/resumo"
         {i.inicioData === i.fimData ? dataBR(i.inicioData) : `${dataBR(i.inicioData)} a ${dataBR(i.fimData)}`}
       </p>
 
-      <section className="mb-4 grid grid-cols-2 gap-3">
+      <section className="mb-4 grid grid-cols-2 gap-3" data-tour="resumo-indicadores">
         <Indicador rotulo="Faturamento" valor={brl(r.faturamento)} />
         <Indicador rotulo="Lucro" valor={brl(r.lucroAposPerdas)} destaque />
         <Indicador rotulo="Sacolés vendidos" valor={String(r.qtdVendida)} />
         <Indicador rotulo="Margem" valor={pct(r.margem)} />
       </section>
 
-      <section className="cartao mb-4 space-y-1">
+      <section className="cartao mb-4 space-y-1" data-tour="resumo-conta">
         <Linha rotulo="Faturamento" valor={brl(r.faturamento)} />
         <Linha rotulo="− Custo dos sacolés vendidos" valor={brl(r.custoVendidos)} />
         <Linha rotulo="= Lucro bruto" valor={brl(r.lucroBruto)} forte />
@@ -90,7 +90,7 @@ export default async function PaginaResumo({ searchParams }: PageProps<"/resumo"
         ))}
       </section>
 
-      <section className="cartao mb-4">
+      <section className="cartao mb-4" data-tour="resumo-sabores">
         <h2 className="mb-2 font-semibold">Por sabor</h2>
         {r.porSabor.length === 0 ? (
           <p className="text-neutral-500">Sem vendas no período.</p>

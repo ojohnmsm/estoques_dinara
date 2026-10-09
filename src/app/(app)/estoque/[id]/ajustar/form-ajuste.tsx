@@ -16,7 +16,7 @@ export function FormAjuste({ saborId, estoque }: { saborId: string; estoque: num
   return (
     <form action={acao} className="space-y-4">
       <input type="hidden" name="sabor_id" value={saborId} />
-      <fieldset className="space-y-2">
+      <fieldset className="space-y-2" data-tour="ajustar-motivo">
         <legend className="rotulo">Motivo</legend>
         {(Object.keys(MOTIVOS) as Motivo[]).map((m) => (
           <label key={m} className="cartao flex items-center gap-3 py-3">
@@ -37,7 +37,7 @@ export function FormAjuste({ saborId, estoque }: { saborId: string; estoque: num
         </div>
       )}
 
-      <div>
+      <div data-tour="ajustar-qtd">
         <label className="rotulo" htmlFor="qtd">
           {motivo === "contagem" ? "Quantos você contou no freezer?" : "Quantidade"}
         </label>

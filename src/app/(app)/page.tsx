@@ -3,6 +3,7 @@ import { listarSabores } from "@/lib/dados";
 import { getSupabase } from "@/lib/supabase/server";
 import { intervalo } from "@/lib/periodo";
 import { Vender } from "./vender";
+import { ConviteTreino } from "@/components/convite-treino";
 
 export default async function PaginaVender() {
   const { supabase } = await getSupabase();
@@ -20,10 +21,13 @@ export default async function PaginaVender() {
 
   if (sabores.length === 0) {
     return (
-      <div className="cartao mt-8 space-y-3 text-center">
+      <div className="mt-4 space-y-4">
+      <ConviteTreino sempre />
+      <div className="cartao space-y-3 text-center">
         <p className="text-lg font-semibold">Nenhum sabor cadastrado ainda</p>
         <p className="text-neutral-600">Comece cadastrando os ingredientes e depois os sabores com a receita.</p>
-        <Link href="/mais" className="btn-primario w-full">Ir para cadastros</Link>
+        <Link href="/mais" className="btn-secundario w-full">Ir para cadastros</Link>
+      </div>
       </div>
     );
   }

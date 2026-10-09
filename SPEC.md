@@ -213,6 +213,17 @@ Fluxo:
 
 Nada é gravado sem passar pela revisão. Falha do Gemini cai para preenchimento manual com a foto visível.
 
+### 7.1 Nota duplicada
+- A IA extrai a **chave de acesso** (44 dígitos). Ela só é aceita se o **dígito verificador (módulo 11)** conferir; leitura errada vira `null`.
+- `compras.chave_acesso` tem índice único por usuária. `registrar_compra_nota` grava compra e chave na mesma transação: chave repetida desfaz tudo.
+- Avisos na tela:
+  - **mesma chave** → "Esta nota já foi registrada" (vermelho), e salvar fica bloqueado;
+  - **sem chave, mesma data e valor parecido** → "Parece uma compra repetida" (amarelo), e pode salvar com "É outra compra, salvar mesmo assim". Vale também para compra digitada.
+
+### 7.2 Itens lembrados
+Tela **Mais → Itens lembrados das notas**: para cada texto de nota, trocar o ingrediente, marcar como ignorar ou **Esquecer** (volta como novo na próxima nota). Compras já salvas não mudam.
+
+
 ## 8. Telas
 
 Navegação inferior com 4 abas: **Vender · Estoque · Resumo · Mais**.
@@ -235,6 +246,11 @@ Navegação inferior com 4 abas: **Vender · Estoque · Resumo · Mais**.
    - Sair.
 
 Diretrizes de UI: alvos de toque ≥ 44px, valores em R$ no formato brasileiro, teclado numérico em campos de quantidade e valor, confirmação apenas em ações destrutivas.
+
+## 8.1 Tutorial
+- **Treino guiado** (`/tutorial`): simula o ciclo nota → ingredientes → receita → produção → venda → resumo, com dados fictícios **só na memória da tela**. Nada vai para o banco. As contas usam as mesmas funções do app. Pode ser refeito em Mais → Ajuda.
+- **Dicas por tela**: destacam os elementos reais (`data-tour`) com passo a passo curto. Abrem sozinhas na primeira visita, depois que o treino foi feito ou dispensado. O botão **?** do cabeçalho reabre. Conteúdo em `src/lib/tutorial.ts`.
+- O estado "já vi" fica no navegador (localStorage), por aparelho. Mais → Ajuda → "Mostrar as dicas de novo" zera tudo.
 
 ## 9. Fases e critérios de aceite
 

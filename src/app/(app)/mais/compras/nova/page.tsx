@@ -6,7 +6,7 @@ import { FormCompra } from "./form-compra";
 export default async function PaginaNovaCompra() {
   return (
     <>
-      <Cabecalho titulo="Nova compra" voltar="/mais/compras" />
+      <Cabecalho titulo="Nova compra" voltar="/mais/compras" ajuda="compra-nova" />
       <FormCompra ingredientes={await listarIngredientes()} hoje={hojeSP()} />
     </>
   );

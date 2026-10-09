@@ -8,8 +8,8 @@ export default async function PaginaIngredientes() {
   const ingredientes = await listarIngredientes();
   return (
     <>
-      <Cabecalho titulo="Ingredientes" voltar="/mais" />
-      <ul className="mb-6 space-y-2">
+      <Cabecalho titulo="Ingredientes" voltar="/mais" ajuda="ingredientes" />
+      <ul className="mb-6 space-y-2" data-tour="ingredientes-lista">
         {ingredientes.length === 0 && <p className="text-neutral-500">Nenhum ingrediente ainda. Inclua também a embalagem (saquinho).</p>}
         {ingredientes.map((i) => (
           <li key={i.id}>
@@ -27,7 +27,7 @@ export default async function PaginaIngredientes() {
           </li>
         ))}
       </ul>
-      <section className="cartao">
+      <section className="cartao" data-tour="ingredientes-novo">
         <h2 className="mb-3 text-lg font-semibold">Novo ingrediente</h2>
         <FormIngrediente />
       </section>

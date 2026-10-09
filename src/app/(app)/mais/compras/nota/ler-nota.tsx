@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import type { Ingrediente } from "@/lib/dados";
 import { lerNota, type NotaParaRevisar } from "../../../actions";
 import { FormCompra } from "../nova/form-compra";
+import { Tour } from "@/components/tour";
 
 /** Reduz a foto no próprio celular (lado maior 1600px, JPEG) antes de enviar. */
 async function reduzir(arquivo: File): Promise<Blob> {
@@ -37,6 +38,7 @@ export function LerNota({ ingredientes, hoje }: { ingredientes: Ingrediente[]; h
           </details>
         )}
         <FormCompra ingredientes={ingredientes} hoje={hoje} nota={nota} />
+        <Tour id="revisao" semBotao />
       </div>
     );
   }
@@ -46,7 +48,7 @@ export function LerNota({ ingredientes, hoje }: { ingredientes: Ingrediente[]; h
       <p className="text-neutral-600">
         Tire uma foto da nota inteira, reta e com boa luz. A IA lê os itens e você confere antes de salvar.
       </p>
-      <label className={`btn-primario w-full ${pendente ? "pointer-events-none opacity-50" : ""}`}>
+      <label data-tour="nota-foto" className={`btn-primario w-full ${pendente ? "pointer-events-none opacity-50" : ""}`}>
         {pendente ? "Lendo a nota…" : "📷 Tirar foto ou escolher da galeria"}
         <input
           type="file"
@@ -76,7 +78,7 @@ export function LerNota({ ingredientes, hoje }: { ingredientes: Ingrediente[]; h
       </label>
       {pendente && <p className="text-center text-sm text-neutral-500">Isso pode levar uns 10 a 20 segundos.</p>}
       {erro && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
-      <Link href="/mais/compras/nova" className="btn-secundario w-full">Registrar à mão</Link>
+      <Link href="/mais/compras/nova" className="btn-secundario w-full" data-tour="nota-manual">Registrar à mão</Link>
     </div>
   );
 }

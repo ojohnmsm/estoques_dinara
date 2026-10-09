@@ -5,7 +5,7 @@ import { FormSabor } from "../form-sabor";
 export default async function PaginaNovoSabor() {
   return (
     <>
-      <Cabecalho titulo="Novo sabor" voltar="/mais/sabores" />
+      <Cabecalho titulo="Novo sabor" voltar="/mais/sabores" ajuda="sabor-form" />
       <FormSabor ingredientes={await listarIngredientes()} />
     </>
   );

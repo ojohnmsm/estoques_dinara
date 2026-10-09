@@ -9,7 +9,7 @@ export const maxDuration = 60;
 export default async function PaginaLerNota() {
   return (
     <>
-      <Cabecalho titulo="Ler nota" voltar="/mais/compras" />
+      <Cabecalho titulo="Ler nota" voltar="/mais/compras" ajuda="ler-nota" />
       <LerNota ingredientes={await listarIngredientes()} hoje={hojeSP()} />
     </>
   );

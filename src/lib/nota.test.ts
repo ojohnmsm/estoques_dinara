@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { embalagemNaUnidade, limparNota, normalizarTexto, sugerirLinhas, type ItemLido } from "./nota";
+import { chaveValida, embalagemNaUnidade, limparNota, normalizarTexto, sugerirLinhas, type ItemLido } from "./nota";
 import { custoUnitario, qtdBaseItem } from "./calculos";
 
 // Itens transcritos dos cupons reais usados para validar a fase 2.
@@ -131,6 +131,23 @@ describe("limparNota", () => {
   });
 
   it("resposta vazia vira nota sem itens", () => {
-    expect(limparNota(null)).toEqual({ data: null, local: null, total: null, itens: [] });
+    expect(limparNota(null)).toEqual({ chave_acesso: null, data: null, local: null, total: null, itens: [] });
+  });
+
+  it("aceita a chave com espaços se o dígito conferir; descarta leitura errada", () => {
+    expect(limparNota({ chave_acesso: "3326 0403 5370 0900 0124 6501 7000 2534 1411 0253 4145" }).chave_acesso).toBe(
+      "33260403537009000124650170002534141102534145",
+    );
+    // um dígito trocado pela IA → dígito verificador não confere
+    expect(limparNota({ chave_acesso: "33260403537009000124650170002534141102534745" }).chave_acesso).toBeNull();
+  });
+});
+
+describe("chaveValida", () => {
+  it("confere as chaves dos cupons reais", () => {
+    expect(chaveValida("33260403537009000124650170002534141102534145")).toBe(true);
+    expect(chaveValida("33260435662475000128652040001190101001212627")).toBe(true);
+    expect(chaveValida("33260435662475000128652040001190101001212626")).toBe(false);
+    expect(chaveValida("123")).toBe(false);
   });
 });

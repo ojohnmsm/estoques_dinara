@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { Ingrediente } from "@/lib/dados";
 import type { LinhaSugerida, Situacao } from "@/lib/nota";
-import { brl, custoLegivel, parseNumero } from "@/lib/formato";
+import { brl, custoLegivel, dataBR, parseNumero } from "@/lib/formato";
 import { custoUnitario, qtdBaseItem } from "@/lib/calculos";
-import { criarIngrediente, registrarCompra, type Estado, type NotaParaRevisar } from "../../../actions";
+import { criarIngrediente, registrarCompra, type Duplicada, type Estado, type NotaParaRevisar } from "../../../actions";
 import { Mensagem } from "@/components/mensagem";
 
 type Linha = {
@@ -85,12 +86,16 @@ export function FormCompra({
   const totalTudo = linhas.reduce((t, l) => t + (parseNumero(l.valor) || 0), 0);
   const divergeDaNota = totalNota != null && Math.abs(totalTudo - totalNota) > 0.05;
 
-  function salvar() {
+  const notaRepetida = nota?.duplicada?.motivo === "chave";
+
+  function salvar(confirmar_duplicada = false) {
     iniciar(async () => {
       const r = await registrarCompra({
         data,
         local: local || undefined,
         foto_path: nota?.foto_path ?? null,
+        chave_acesso: nota?.chave_acesso ?? null,
+        confirmar_duplicada,
         itens: ativas.map((l) => ({
           ingrediente_id: l.ingrediente_id,
           granel: l.granel,
@@ -120,7 +125,9 @@ export function FormCompra({
         </div>
       </div>
 
-      {nota && (
+      {nota?.duplicada && <AvisoDuplicada dup={nota.duplicada} />}
+
+      {nota && !notaRepetida && (
         <p className="rounded-xl bg-ceu p-3 text-sm text-azul-escuro">
           Confira cada item. Os amarelos são novos: escolha o ingrediente certo uma vez e o app lembra nas próximas notas.
           Marque &quot;ignorar&quot; no que não vai em receita.
@@ -134,7 +141,11 @@ export function FormCompra({
         const valor = parseNumero(l.valor);
         const podeGranel = ing && ing.unidade_base !== "un";
         return (
-          <section key={idx} className={`cartao space-y-3 ${ignorada ? "opacity-60" : ""}`}>
+          <section
+            key={idx}
+            data-tour={idx === 0 ? (nota ? "revisao-item" : "compra-item") : undefined}
+            className={`cartao space-y-3 ${ignorada ? "opacity-60" : ""}`}
+          >
             {l.texto && (
               <div className="flex items-start gap-2">
                 <p className="flex-1 font-mono text-xs text-neutral-600">{l.texto}</p>
@@ -147,7 +158,7 @@ export function FormCompra({
             )}
 
             {l.texto && (
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-sm" data-tour={idx === 0 ? "revisao-ignorar" : undefined}>
                 <input
                   type="checkbox"
                   checked={ignorada}
@@ -160,7 +171,7 @@ export function FormCompra({
 
             {!ignorada && (
               <>
-                <div className="flex gap-2">
+                <div className="flex gap-2" data-tour={idx === 0 && nota ? "revisao-ingrediente" : undefined}>
                   <select
                     aria-label="Ingrediente"
                     className="campo flex-1"
@@ -236,12 +247,12 @@ export function FormCompra({
       })}
 
       {!nota && (
-        <button type="button" className="btn-secundario w-full" onClick={() => setLinhas([...linhas, { ...vazia }])}>
+        <button type="button" data-tour="compra-adicionar" className="btn-secundario w-full" onClick={() => setLinhas([...linhas, { ...vazia }])}>
           + Item
         </button>
       )}
 
-      <div className="space-y-1">
+      <div className="space-y-1" data-tour="revisao-total">
         <p className="flex justify-between text-lg"><span>Total em ingredientes</span><strong>{brl(total)}</strong></p>
         {totalNota != null && (
           <p className={`flex justify-between text-sm ${divergeDaNota ? "text-amber-800" : "text-neutral-500"}`}>
@@ -250,10 +261,38 @@ export function FormCompra({
           </p>
         )}
       </div>
-      <Mensagem estado={estado} />
-      <button type="button" disabled={pendente || ativas.length === 0} onClick={salvar} className="btn-primario w-full">
-        {pendente ? "Salvando…" : "Salvar compra"}
-      </button>
+      {estado.duplicada?.motivo === "parecida" && !estado.erro ? (
+        <div className="space-y-3">
+          <AvisoDuplicada dup={estado.duplicada} />
+          <button type="button" disabled={pendente} onClick={() => salvar(true)} className="btn-secundario w-full">
+            {pendente ? "Salvando…" : "É outra compra, salvar mesmo assim"}
+          </button>
+        </div>
+      ) : (
+        <>
+          <Mensagem estado={estado} />
+          <button type="button" disabled={pendente || ativas.length === 0 || notaRepetida} onClick={() => salvar()} className="btn-primario w-full">
+            {pendente ? "Salvando…" : "Salvar compra"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AvisoDuplicada({ dup }: { dup: Duplicada }) {
+  const quando = `${dataBR(dup.data)}${dup.local ? ` (${dup.local})` : ""}, ${brl(dup.total)}`;
+  return (
+    <div role="alert" className={`rounded-xl p-3 text-sm ${dup.motivo === "chave" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"}`}>
+      <p className="font-semibold">{dup.motivo === "chave" ? "Esta nota já foi registrada" : "Parece uma compra repetida"}</p>
+      <p className="mt-1">
+        {dup.motivo === "chave"
+          ? `É a mesma nota fiscal da compra de ${quando}. Salvar de novo contaria tudo duas vezes, então o app não deixa.`
+          : `Já existe uma compra em ${quando}. Se for a mesma nota, não salve de novo.`}
+      </p>
+      <Link href={`/mais/compras/${dup.compra_id}`} className="mt-2 inline-block font-medium underline">
+        Ver a compra registrada
+      </Link>
     </div>
   );
 }

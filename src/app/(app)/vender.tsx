@@ -7,6 +7,8 @@ import { brl, FORMAS, horaBR, parseNumero } from "@/lib/formato";
 import { desfazerVenda, registrarVenda, type Estado } from "./actions";
 import { Mensagem } from "@/components/mensagem";
 import { BotaoConfirmar } from "@/components/botao-confirmar";
+import { Tour } from "@/components/tour";
+import { ConviteTreino } from "@/components/convite-treino";
 
 type Forma = (typeof FORMAS)[number]["valor"];
 type VendaHoje = { grupo: string; data_hora: string; forma: string; total: number; itens: string[] };
@@ -53,10 +55,12 @@ export function Vender({ sabores, vendasHoje }: { sabores: SaborComEstoque[]; ve
     <div className="space-y-6">
       <header className="flex items-center gap-3">
         <Image src="/logo.png" alt="Casal Gourmet" width={44} height={44} />
-        <h1 className="text-2xl font-bold text-azul-escuro">Vender</h1>
+        <h1 className="flex-1 text-2xl font-bold text-azul-escuro">Vender</h1>
+        <Tour id="vender" />
       </header>
+      <ConviteTreino />
 
-      <ul className="grid grid-cols-2 gap-3">
+      <ul className="grid grid-cols-2 gap-3" data-tour="vender-sabores">
         {sabores.map((s) => {
           const q = carrinho[s.id] ?? 0;
           return (
@@ -81,7 +85,7 @@ export function Vender({ sabores, vendasHoje }: { sabores: SaborComEstoque[]; ve
       </ul>
 
       {linhas.length > 0 && (
-        <section className="cartao space-y-4">
+        <section className="cartao space-y-4" data-tour="vender-carrinho">
           <ul className="space-y-2">
             {linhas.map(([id, q]) => (
               <li key={id} className="flex items-center gap-2">
@@ -106,7 +110,7 @@ export function Vender({ sabores, vendasHoje }: { sabores: SaborComEstoque[]; ve
               A venda será registrada mesmo assim; depois faça uma contagem do freezer.
             </p>
           )}
-          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Forma de pagamento">
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Forma de pagamento" data-tour="vender-pagamento">
             {FORMAS.map((f) => (
               <button
                 key={f.valor}
@@ -128,7 +132,7 @@ export function Vender({ sabores, vendasHoje }: { sabores: SaborComEstoque[]; ve
 
       <Mensagem estado={estado} />
 
-      <section>
+      <section data-tour="vender-hoje">
         <h2 className="mb-2 flex justify-between text-lg font-semibold">
           <span>Vendas de hoje</span>
           <span>{brl(totalHoje)}</span>

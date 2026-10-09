@@ -10,7 +10,16 @@ import { normalizarTexto, sugerirLinhas, type LinhaSugerida } from "@/lib/nota";
 import { lerNotaComGemini } from "@/lib/gemini";
 import type { Ingrediente } from "@/lib/dados";
 
-export type Estado = { erro?: string; ok?: string };
+export type Estado = { erro?: string; ok?: string; duplicada?: Duplicada };
+
+/** Compra já registrada que parece ser a mesma nota. */
+export type Duplicada = {
+  motivo: "chave" | "parecida"; // chave = mesma NFC-e (certeza); parecida = mesma data e valor
+  compra_id: string;
+  data: string;
+  local: string | null;
+  total: number;
+};
 
 function mensagem(error: { code?: string; message: string }) {
   if (error.code === "23505") return "Já existe um cadastro com esse nome.";
@@ -146,6 +155,8 @@ const compraSchema = z.object({
   data,
   local: z.string().trim().max(100).optional(),
   foto_path: z.string().max(200).nullable().optional(),
+  chave_acesso: z.string().regex(/^\d{44}$/).nullable().optional(),
+  confirmar_duplicada: z.boolean().default(false),
   itens: z
     .array(
       z.object({
@@ -170,13 +181,22 @@ export async function registrarCompra(entrada: z.input<typeof compraSchema>): Pr
   const { supabase, user } = await getSupabase();
   if (p.data.foto_path && !p.data.foto_path.startsWith(`${user.id}/`)) return { erro: "Foto inválida." };
 
-  const { error } = await supabase.rpc("registrar_compra", {
-    p_data: p.data.data,
-    p_local: p.data.local ?? null,
-    p_origem: p.data.foto_path ? "foto" : "manual",
-    p_foto_path: p.data.foto_path ?? null,
-    p_itens: p.data.itens.map(({ nota, ...i }) => ({ ...i, texto_original: nota?.texto_original ?? null })),
-  });
+  const soma = p.data.itens.reduce((t, i) => t + i.valor_total, 0);
+  const dup = await buscarDuplicada(supabase, { chave: p.data.chave_acesso ?? null, data: p.data.data, total: soma, tolerancia: 0.01 });
+  if (dup?.motivo === "chave") return { erro: "Esta nota já foi registrada.", duplicada: dup };
+  if (dup && !p.data.confirmar_duplicada) return { duplicada: dup };
+
+  const itens = p.data.itens.map(({ nota, ...i }) => ({ ...i, texto_original: nota?.texto_original ?? null }));
+  const { error } = p.data.foto_path
+    ? await supabase.rpc("registrar_compra_nota", {
+        p_data: p.data.data,
+        p_local: p.data.local ?? null,
+        p_itens: itens,
+        p_foto_path: p.data.foto_path,
+        p_chave_acesso: p.data.chave_acesso ?? null,
+      })
+    : await supabase.rpc("registrar_compra", { p_data: p.data.data, p_local: p.data.local ?? null, p_itens: itens });
+  if (error?.code === "23505") return { erro: "Esta nota já foi registrada." };
   if (error) return { erro: mensagem(error) };
 
   await lembrarProdutos(supabase, p.data.itens, p.data.ignorados);
@@ -215,7 +235,32 @@ async function lembrarProdutos(
   if (error) console.error("Falha ao gravar memória de produtos", error);
 }
 
+/** Procura compra igual: mesma chave de acesso, ou mesma data com o mesmo valor. */
+async function buscarDuplicada(
+  supabase: Awaited<ReturnType<typeof getSupabase>>["supabase"],
+  q: { chave: string | null; data: string | null; total: number | null; tolerancia: number },
+): Promise<Duplicada | null> {
+  if (q.chave) {
+    const { data } = await supabase.from("compras").select("id, data, local, total").eq("chave_acesso", q.chave).maybeSingle();
+    if (data) return { motivo: "chave", compra_id: data.id, data: data.data, local: data.local, total: Number(data.total) };
+  }
+  if (q.data && q.total != null) {
+    const { data } = await supabase
+      .from("compras")
+      .select("id, data, local, total")
+      .eq("data", q.data)
+      .gte("total", q.total - q.tolerancia)
+      .lte("total", q.total + q.tolerancia)
+      .limit(1);
+    const c = data?.[0];
+    if (c) return { motivo: "parecida", compra_id: c.id, data: c.data, local: c.local, total: Number(c.total) };
+  }
+  return null;
+}
+
 export type NotaParaRevisar = {
+  chave_acesso: string | null;
+  duplicada: Duplicada | null;
   data: string | null;
   local: string | null;
   total: number | null;
@@ -254,8 +299,18 @@ export async function lerNota(form: FormData): Promise<{ erro: string } | { nota
   }
   if (lida.itens.length === 0) return { erro: "Não encontrei itens nessa foto. Tente uma foto mais nítida e reta." };
 
+  // o total salvo exclui itens ignorados (sacola etc.), então aqui a comparação é folgada
+  const duplicada = await buscarDuplicada(supabase, {
+    chave: lida.chave_acesso,
+    data: lida.data,
+    total: lida.total,
+    tolerancia: Math.max(1, (lida.total ?? 0) * 0.03),
+  });
+
   return {
     nota: {
+      chave_acesso: lida.chave_acesso,
+      duplicada,
       data: lida.data,
       local: lida.local,
       total: lida.total,
@@ -263,6 +318,30 @@ export async function lerNota(form: FormData): Promise<{ erro: string } | { nota
       linhas: sugerirLinhas(lida.itens, produtos.data, ingredientes.data),
     },
   };
+}
+
+// ---------------------------------------------------------------- Itens lembrados das notas
+
+export async function trocarVinculo(id: string, ingredienteId: string | null): Promise<Estado> {
+  if (!z.uuid().safeParse(id).success) return { erro: "Item inválido." };
+  if (ingredienteId && !z.uuid().safeParse(ingredienteId).success) return { erro: "Ingrediente inválido." };
+  const { supabase } = await getSupabase();
+  const { error } = await supabase
+    .from("produtos")
+    .update(ingredienteId ? { ingrediente_id: ingredienteId, ignorar: false } : { ingrediente_id: null, ignorar: true })
+    .eq("id", id);
+  if (error) return { erro: mensagem(error) };
+  atualizar();
+  return { ok: "Atualizado." };
+}
+
+/** Esquece o item: na próxima nota ele volta como novo (amarelo). Compras já salvas não mudam. */
+export async function esquecerProduto(id: string): Promise<Estado> {
+  const { supabase } = await getSupabase();
+  const { error } = await supabase.from("produtos").delete().eq("id", id);
+  if (error) return { erro: mensagem(error) };
+  atualizar();
+  return { ok: "Esquecido." };
 }
 
 export async function excluirCompra(id: string): Promise<Estado> {

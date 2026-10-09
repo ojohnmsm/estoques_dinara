@@ -12,9 +12,9 @@ export default async function PaginaEstoque() {
 
   return (
     <>
-      <Cabecalho titulo="Estoque" />
+      <Cabecalho titulo="Estoque" ajuda="estoque" />
       {ordenados.length === 0 && <p className="text-neutral-500">Nenhum sabor ativo.</p>}
-      <ul className="space-y-2">
+      <ul className="space-y-2" data-tour="estoque-lista">
         {ordenados.map((s) => {
           const cor =
             s.estoque < 0 ? "text-red-700" : s.estoque <= s.estoque_minimo ? "text-amber-700" : "text-neutral-900";

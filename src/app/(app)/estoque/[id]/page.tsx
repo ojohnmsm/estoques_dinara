@@ -32,20 +32,20 @@ export default async function PaginaSaborEstoque({ params }: PageProps<"/estoque
 
   return (
     <>
-      <Cabecalho titulo={sabor.nome} voltar="/estoque" />
-      <section className="cartao mb-4 text-center">
+      <Cabecalho titulo={sabor.nome} voltar="/estoque" ajuda="estoque-sabor" />
+      <section className="cartao mb-4 text-center" data-tour="sabor-numero">
         <p className="text-sm text-neutral-600">No freezer</p>
         <p className={`text-5xl font-bold ${sabor.estoque < 0 ? "text-red-700" : ""}`}>{sabor.estoque}</p>
         <p className="mt-1 text-sm text-neutral-500">Custo médio: {brl(sabor.custo_medio)} por sacolé</p>
       </section>
-      <div className="mb-6 grid grid-cols-2 gap-3">
+      <div className="mb-6 grid grid-cols-2 gap-3" data-tour="sabor-acoes">
         <Link href={`/estoque/${id}/produzir`} className="btn-primario">Produzi</Link>
         <Link href={`/estoque/${id}/ajustar`} className="btn-secundario">Ajustar</Link>
       </div>
 
       <h2 className="mb-2 text-lg font-semibold">Produções</h2>
       {producoes.data.length === 0 && <p className="mb-4 text-neutral-500">Nenhuma produção registrada.</p>}
-      <ul className="mb-6 space-y-2">
+      <ul className="mb-6 space-y-2" data-tour="sabor-producoes">
         {producoes.data.map((p, i) => (
           <li key={p.id} className="cartao flex items-center gap-3 py-3">
             <div className="flex-1">
