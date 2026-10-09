@@ -1,21 +1,64 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { Ingrediente } from "@/lib/dados";
+import type { LinhaSugerida, Situacao } from "@/lib/nota";
 import { brl, custoLegivel, parseNumero } from "@/lib/formato";
 import { custoUnitario, qtdBaseItem } from "@/lib/calculos";
-import { registrarCompra, type Estado } from "../../../actions";
+import { criarIngrediente, registrarCompra, type Estado, type NotaParaRevisar } from "../../../actions";
 import { Mensagem } from "@/components/mensagem";
 
-type Linha = { ingrediente_id: string; granel: boolean; qtd: string; embalagem: string; valor: string };
-const vazia: Linha = { ingrediente_id: "", granel: false, qtd: "1", embalagem: "", valor: "" };
-const txt = (n: number | null) => (n == null ? "" : String(n).replace(".", ","));
+type Linha = {
+  ingrediente_id: string;
+  granel: boolean;
+  qtd: string;
+  embalagem: string;
+  valor: string;
+  // só nas linhas que vieram da nota
+  texto?: string;
+  codigo?: string | null;
+  situacao?: Situacao;
+  embalagemLida?: LinhaSugerida["embalagem_lida"];
+};
 
-export function FormCompra({ ingredientes, hoje }: { ingredientes: Ingrediente[]; hoje: string }) {
-  const [data, setData] = useState(hoje);
-  const [local, setLocal] = useState("");
-  const [linhas, setLinhas] = useState<Linha[]>([{ ...vazia }]);
+const vazia: Linha = { ingrediente_id: "", granel: false, qtd: "1", embalagem: "", valor: "" };
+const txt = (n: number | null | undefined) => (n == null ? "" : String(n).replace(".", ","));
+const NOVO = "__novo__";
+
+function daNota(l: LinhaSugerida): Linha {
+  return {
+    ingrediente_id: l.ingrediente_id,
+    granel: l.granel,
+    qtd: txt(l.qtd),
+    embalagem: txt(l.embalagem),
+    valor: txt(l.valor),
+    texto: l.texto,
+    codigo: l.codigo,
+    situacao: l.situacao,
+    embalagemLida: l.embalagem_lida,
+  };
+}
+
+const ROTULO: Record<Situacao, { texto: string; cor: string }> = {
+  conhecido: { texto: "Já conhecido", cor: "bg-green-100 text-green-800" },
+  novo: { texto: "Confira", cor: "bg-amber-100 text-amber-800" },
+  ignorar: { texto: "Ignorado", cor: "bg-neutral-200 text-neutral-600" },
+};
+
+export function FormCompra({
+  ingredientes: iniciais,
+  hoje,
+  nota,
+}: {
+  ingredientes: Ingrediente[];
+  hoje: string;
+  nota?: NotaParaRevisar;
+}) {
+  const [ingredientes, setIngredientes] = useState(iniciais);
+  const [data, setData] = useState(nota?.data && nota.data <= hoje ? nota.data : hoje);
+  const [local, setLocal] = useState(nota?.local ?? "");
+  const [linhas, setLinhas] = useState<Linha[]>(nota ? nota.linhas.map(daNota) : [{ ...vazia }]);
+  const [criandoEm, setCriandoEm] = useState<number | null>(null);
   const [estado, setEstado] = useState<Estado>({});
   const [pendente, iniciar] = useTransition();
   const porId = new Map(ingredientes.map((i) => [i.id, i]));
@@ -23,33 +66,45 @@ export function FormCompra({ ingredientes, hoje }: { ingredientes: Ingrediente[]
   const mudar = (idx: number, parcial: Partial<Linha>) =>
     setLinhas((ls) => ls.map((l, j) => (j === idx ? { ...l, ...parcial } : l)));
 
-  const total = linhas.reduce((t, l) => t + (parseNumero(l.valor) || 0), 0);
-
-  function salvar() {
-    iniciar(async () => {
-      setEstado(
-        await registrarCompra({
-          data,
-          local: local || undefined,
-          itens: linhas.map((l) => ({
-            ingrediente_id: l.ingrediente_id,
-            granel: l.granel,
-            qtd_embalagens: parseNumero(l.qtd),
-            embalagem_qtd: l.granel ? null : parseNumero(l.embalagem) || null,
-            valor_total: parseNumero(l.valor),
-          })),
-        }),
-      );
+  function escolherIngrediente(idx: number, id: string) {
+    if (id === NOVO) return setCriandoEm(idx);
+    const ing = porId.get(id);
+    const l = linhas[idx];
+    // na nota, usa a embalagem impressa se for da mesma unidade; senão, a última usada
+    const lida = ing && l.embalagemLida?.unidade === ing.unidade_base ? l.embalagemLida.qtd : null;
+    mudar(idx, {
+      ingrediente_id: id,
+      embalagem: txt(lida ?? ing?.embalagem_padrao),
+      granel: ing?.unidade_base === "un" ? false : l.granel,
     });
   }
 
-  if (ingredientes.length === 0) {
-    return (
-      <div className="cartao space-y-3">
-        <p>Cadastre os ingredientes antes de registrar uma compra.</p>
-        <Link href="/mais/ingredientes" className="btn-primario w-full">Ir para ingredientes</Link>
-      </div>
-    );
+  const ativas = linhas.filter((l) => l.situacao !== "ignorar");
+  const total = ativas.reduce((t, l) => t + (parseNumero(l.valor) || 0), 0);
+  const totalNota = nota?.total ?? null;
+  const totalTudo = linhas.reduce((t, l) => t + (parseNumero(l.valor) || 0), 0);
+  const divergeDaNota = totalNota != null && Math.abs(totalTudo - totalNota) > 0.05;
+
+  function salvar() {
+    iniciar(async () => {
+      const r = await registrarCompra({
+        data,
+        local: local || undefined,
+        foto_path: nota?.foto_path ?? null,
+        itens: ativas.map((l) => ({
+          ingrediente_id: l.ingrediente_id,
+          granel: l.granel,
+          qtd_embalagens: parseNumero(l.qtd),
+          embalagem_qtd: l.granel ? null : parseNumero(l.embalagem) || null,
+          valor_total: parseNumero(l.valor),
+          nota: l.texto ? { texto_original: l.texto, codigo: l.codigo ?? null } : undefined,
+        })),
+        ignorados: linhas
+          .filter((l) => l.situacao === "ignorar" && l.texto)
+          .map((l) => ({ texto_original: l.texto!, codigo: l.codigo ?? null })),
+      });
+      setEstado(r);
+    });
   }
 
   return (
@@ -65,84 +120,201 @@ export function FormCompra({ ingredientes, hoje }: { ingredientes: Ingrediente[]
         </div>
       </div>
 
+      {nota && (
+        <p className="rounded-xl bg-ceu p-3 text-sm text-azul-escuro">
+          Confira cada item. Os amarelos são novos: escolha o ingrediente certo uma vez e o app lembra nas próximas notas.
+          Marque &quot;ignorar&quot; no que não vai em receita.
+        </p>
+      )}
+
       {linhas.map((l, idx) => {
         const ing = porId.get(l.ingrediente_id);
+        const ignorada = l.situacao === "ignorar";
         const base = qtdBaseItem({ granel: l.granel, qtd: parseNumero(l.qtd) || 0, embalagem: parseNumero(l.embalagem) || null });
         const valor = parseNumero(l.valor);
         const podeGranel = ing && ing.unidade_base !== "un";
         return (
-          <section key={idx} className="cartao space-y-3">
-            <div className="flex gap-2">
-              <select
-                aria-label="Ingrediente"
-                className="campo flex-1"
-                value={l.ingrediente_id}
-                onChange={(e) => {
-                  const novo = porId.get(e.target.value);
-                  mudar(idx, {
-                    ingrediente_id: e.target.value,
-                    embalagem: txt(novo?.embalagem_padrao ?? null),
-                    granel: novo?.unidade_base === "un" ? false : l.granel,
-                  });
-                }}
-              >
-                <option value="">Escolha o ingrediente…</option>
-                {ingredientes.map((i) => (
-                  <option key={i.id} value={i.id}>{i.nome}</option>
-                ))}
-              </select>
-              {linhas.length > 1 && (
-                <button type="button" aria-label="Remover item" className="w-10 text-2xl text-neutral-400" onClick={() => setLinhas(linhas.filter((_, j) => j !== idx))}>
-                  ×
-                </button>
-              )}
-            </div>
-
-            {ing && (
-              <>
-                {podeGranel && (
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={l.granel} onChange={(e) => mudar(idx, { granel: e.target.checked })} className="h-5 w-5 accent-rosa-forte" />
-                    Comprado a granel / por peso (fruta, por exemplo)
-                  </label>
+          <section key={idx} className={`cartao space-y-3 ${ignorada ? "opacity-60" : ""}`}>
+            {l.texto && (
+              <div className="flex items-start gap-2">
+                <p className="flex-1 font-mono text-xs text-neutral-600">{l.texto}</p>
+                {l.situacao && (
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${ROTULO[l.situacao].cor}`}>
+                    {ROTULO[l.situacao].texto}
+                  </span>
                 )}
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="rotulo text-xs">{l.granel ? (ing.unidade_base === "ml" ? "Litros" : "Quilos") : "Quantas emb."}</label>
-                    <input inputMode="decimal" className="campo px-2" value={l.qtd} onChange={(e) => mudar(idx, { qtd: e.target.value })} />
-                  </div>
-                  {!l.granel && (
-                    <div>
-                      <label className="rotulo text-xs">Cada uma com ({ing.unidade_base})</label>
-                      <input inputMode="decimal" className="campo px-2" value={l.embalagem} placeholder="395" onChange={(e) => mudar(idx, { embalagem: e.target.value })} />
-                    </div>
+              </div>
+            )}
+
+            {l.texto && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={ignorada}
+                  onChange={(e) => mudar(idx, { situacao: e.target.checked ? "ignorar" : l.ingrediente_id ? "conhecido" : "novo" })}
+                  className="h-5 w-5 accent-rosa-forte"
+                />
+                Ignorar (não é ingrediente)
+              </label>
+            )}
+
+            {!ignorada && (
+              <>
+                <div className="flex gap-2">
+                  <select
+                    aria-label="Ingrediente"
+                    className="campo flex-1"
+                    value={l.ingrediente_id}
+                    onChange={(e) => escolherIngrediente(idx, e.target.value)}
+                  >
+                    <option value="">Escolha o ingrediente…</option>
+                    {ingredientes.map((i) => (
+                      <option key={i.id} value={i.id}>{i.nome}</option>
+                    ))}
+                    <option value={NOVO}>+ Novo ingrediente…</option>
+                  </select>
+                  {!l.texto && linhas.length > 1 && (
+                    <button type="button" aria-label="Remover item" className="w-10 text-2xl text-neutral-400" onClick={() => setLinhas(linhas.filter((_, j) => j !== idx))}>
+                      ×
+                    </button>
                   )}
-                  <div className={l.granel ? "col-span-2" : ""}>
-                    <label className="rotulo text-xs">Valor pago (R$)</label>
-                    <input inputMode="decimal" className="campo px-2" value={l.valor} onChange={(e) => mudar(idx, { valor: e.target.value })} />
-                  </div>
                 </div>
-                {base > 0 && valor >= 0 && (
-                  <p className="text-sm text-neutral-600">
-                    Total: {base.toLocaleString("pt-BR")} {ing.unidade_base} · <strong>{custoLegivel(custoUnitario(valor, base), ing.unidade_base)}</strong>
-                    {ing.custo_unitario != null && <> (antes {custoLegivel(ing.custo_unitario, ing.unidade_base)})</>}
-                  </p>
+
+                {criandoEm === idx && (
+                  <NovoIngrediente
+                    sugestao={l.texto ?? ""}
+                    onCancelar={() => setCriandoEm(null)}
+                    onCriado={(novo) => {
+                      setIngredientes((is) => [...is, novo].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+                      setCriandoEm(null);
+                      mudar(idx, {
+                        ingrediente_id: novo.id,
+                        granel: novo.unidade_base === "un" ? false : l.granel,
+                        embalagem: l.embalagemLida?.unidade === novo.unidade_base ? txt(l.embalagemLida.qtd) : l.embalagem,
+                      });
+                    }}
+                  />
+                )}
+
+                {ing && (
+                  <>
+                    {podeGranel && (
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={l.granel} onChange={(e) => mudar(idx, { granel: e.target.checked })} className="h-5 w-5 accent-rosa-forte" />
+                        Comprado a granel / por peso
+                      </label>
+                    )}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="rotulo text-xs">{l.granel ? (ing.unidade_base === "ml" ? "Litros" : "Quilos") : "Quantas emb."}</label>
+                        <input inputMode="decimal" className="campo px-2" value={l.qtd} onChange={(e) => mudar(idx, { qtd: e.target.value })} />
+                      </div>
+                      {!l.granel && (
+                        <div>
+                          <label className="rotulo text-xs">Cada uma com ({ing.unidade_base})</label>
+                          <input inputMode="decimal" className="campo px-2" value={l.embalagem} placeholder={ing.unidade_base === "un" ? "15" : "395"} onChange={(e) => mudar(idx, { embalagem: e.target.value })} />
+                        </div>
+                      )}
+                      <div className={l.granel ? "col-span-2" : ""}>
+                        <label className="rotulo text-xs">Valor pago (R$)</label>
+                        <input inputMode="decimal" className="campo px-2" value={l.valor} onChange={(e) => mudar(idx, { valor: e.target.value })} />
+                      </div>
+                    </div>
+                    {base > 0 && valor >= 0 && (
+                      <p className="text-sm text-neutral-600">
+                        Total: {base.toLocaleString("pt-BR")} {ing.unidade_base} · <strong>{custoLegivel(custoUnitario(valor, base), ing.unidade_base)}</strong>
+                        {ing.custo_unitario != null && <> (antes {custoLegivel(ing.custo_unitario, ing.unidade_base)})</>}
+                      </p>
+                    )}
+                  </>
                 )}
               </>
             )}
+            {ignorada && <p className="text-sm text-neutral-500">{brl(parseNumero(l.valor) || 0)} · não entra no custo</p>}
           </section>
         );
       })}
 
-      <button type="button" className="btn-secundario w-full" onClick={() => setLinhas([...linhas, { ...vazia }])}>
-        + Item
-      </button>
+      {!nota && (
+        <button type="button" className="btn-secundario w-full" onClick={() => setLinhas([...linhas, { ...vazia }])}>
+          + Item
+        </button>
+      )}
 
-      <p className="flex justify-between text-lg"><span>Total</span><strong>{brl(total)}</strong></p>
+      <div className="space-y-1">
+        <p className="flex justify-between text-lg"><span>Total em ingredientes</span><strong>{brl(total)}</strong></p>
+        {totalNota != null && (
+          <p className={`flex justify-between text-sm ${divergeDaNota ? "text-amber-800" : "text-neutral-500"}`}>
+            <span>Total da nota{divergeDaNota ? " (não bate com a soma dos itens: confira os valores)" : ""}</span>
+            <span>{brl(totalNota)}</span>
+          </p>
+        )}
+      </div>
       <Mensagem estado={estado} />
-      <button type="button" disabled={pendente} onClick={salvar} className="btn-primario w-full">
+      <button type="button" disabled={pendente || ativas.length === 0} onClick={salvar} className="btn-primario w-full">
         {pendente ? "Salvando…" : "Salvar compra"}
       </button>
+    </div>
+  );
+}
+
+function NovoIngrediente({
+  sugestao,
+  onCriado,
+  onCancelar,
+}: {
+  sugestao: string;
+  onCriado: (i: Ingrediente) => void;
+  onCancelar: () => void;
+}) {
+  const [nome, setNome] = useState("");
+  const [unidade, setUnidade] = useState<"g" | "ml" | "un" | "">("");
+  const [erro, setErro] = useState<string>();
+  const [pendente, iniciar] = useTransition();
+
+  return (
+    <div className="space-y-3 rounded-xl border border-azul-claro bg-ceu p-3">
+      <p className="text-sm font-medium text-azul-escuro">Novo ingrediente</p>
+      <input
+        className="campo"
+        placeholder={sugestao ? "Nome simples, ex.: Leite condensado" : "Ex.: Leite condensado"}
+        value={nome}
+        onChange={(e) => setNome(e.target.value)}
+        aria-label="Nome do ingrediente"
+      />
+      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Medido em">
+        {(["g", "ml", "un"] as const).map((u) => (
+          <button
+            key={u}
+            type="button"
+            role="radio"
+            aria-checked={unidade === u}
+            onClick={() => setUnidade(u)}
+            className={`btn ${unidade === u ? "bg-azul text-white" : "border border-neutral-300 bg-white"}`}
+          >
+            {u === "g" ? "gramas" : u === "ml" ? "ml" : "unidades"}
+          </button>
+        ))}
+      </div>
+      {erro && <p role="alert" className="text-sm text-red-700">{erro}</p>}
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" className="btn-secundario" onClick={onCancelar}>Cancelar</button>
+        <button
+          type="button"
+          className="btn-primario"
+          disabled={pendente || !nome.trim() || !unidade}
+          onClick={() =>
+            iniciar(async () => {
+              if (!unidade) return;
+              const r = await criarIngrediente({ nome, unidade_base: unidade });
+              if ("erro" in r) setErro(r.erro);
+              else onCriado(r.ingrediente);
+            })
+          }
+        >
+          {pendente ? "Criando…" : "Criar"}
+        </button>
+      </div>
     </div>
   );
 }

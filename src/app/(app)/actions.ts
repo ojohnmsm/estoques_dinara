@@ -6,6 +6,9 @@ import { z } from "zod";
 import { getSupabase } from "@/lib/supabase/server";
 import { parseNumero } from "@/lib/formato";
 import { hojeSP } from "@/lib/periodo";
+import { normalizarTexto, sugerirLinhas, type LinhaSugerida } from "@/lib/nota";
+import { lerNotaComGemini } from "@/lib/gemini";
+import type { Ingrediente } from "@/lib/dados";
 
 export type Estado = { erro?: string; ok?: string };
 
@@ -77,6 +80,23 @@ export async function salvarIngrediente(_: Estado, form: FormData): Promise<Esta
   return { ok: `"${p.data.nome}" cadastrado.` };
 }
 
+/** Cria ingrediente sem sair da tela de compra. */
+export async function criarIngrediente(
+  entrada: z.input<typeof ingredienteSchema>,
+): Promise<{ erro: string } | { ingrediente: Ingrediente }> {
+  const p = ingredienteSchema.safeParse(entrada);
+  if (!p.success) return { erro: primeiroErro(p.error) };
+  const { supabase } = await getSupabase();
+  const { data, error } = await supabase
+    .from("ingredientes")
+    .insert(p.data)
+    .select("id, nome, unidade_base, embalagem_padrao, custo_unitario, custo_atualizado_em")
+    .single();
+  if (error) return { erro: mensagem(error) };
+  atualizar();
+  return { ingrediente: data as Ingrediente };
+}
+
 export async function excluirIngrediente(id: string): Promise<Estado> {
   const { supabase } = await getSupabase();
   const { error } = await supabase.from("ingredientes").delete().eq("id", id);
@@ -120,20 +140,25 @@ export async function salvarSabor(entrada: z.input<typeof saborSchema>): Promise
 
 // ---------------------------------------------------------------- Compras
 
+const itemNota = z.object({ texto_original: z.string().trim().min(1).max(200), codigo: z.string().max(50).nullable() });
+
 const compraSchema = z.object({
   data,
   local: z.string().trim().max(100).optional(),
+  foto_path: z.string().max(200).nullable().optional(),
   itens: z
     .array(
       z.object({
-        ingrediente_id: z.uuid({ message: "Escolha o ingrediente de cada linha" }),
+        ingrediente_id: z.uuid({ message: "Escolha o ingrediente de cada linha (ou marque para ignorar)" }),
         granel: z.boolean(),
         qtd_embalagens: z.number().positive("Informe a quantidade de cada item"),
         embalagem_qtd: z.number().positive().nullable(),
         valor_total: z.number().min(0, "Informe o valor de cada item"),
+        nota: itemNota.optional(), // presente quando o item veio da leitura da nota
       }),
     )
     .min(1, "Adicione pelo menos um item"),
+  ignorados: z.array(itemNota).default([]), // itens da nota que não são ingrediente
 });
 
 export async function registrarCompra(entrada: z.input<typeof compraSchema>): Promise<Estado> {
@@ -142,15 +167,102 @@ export async function registrarCompra(entrada: z.input<typeof compraSchema>): Pr
   if (p.data.itens.some((i) => !i.granel && !i.embalagem_qtd)) {
     return { erro: "Informe o tamanho da embalagem de cada item (ou marque como granel)." };
   }
-  const { supabase } = await getSupabase();
+  const { supabase, user } = await getSupabase();
+  if (p.data.foto_path && !p.data.foto_path.startsWith(`${user.id}/`)) return { erro: "Foto inválida." };
+
   const { error } = await supabase.rpc("registrar_compra", {
     p_data: p.data.data,
     p_local: p.data.local ?? null,
-    p_itens: p.data.itens,
+    p_origem: p.data.foto_path ? "foto" : "manual",
+    p_foto_path: p.data.foto_path ?? null,
+    p_itens: p.data.itens.map(({ nota, ...i }) => ({ ...i, texto_original: nota?.texto_original ?? null })),
   });
   if (error) return { erro: mensagem(error) };
+
+  await lembrarProdutos(supabase, p.data.itens, p.data.ignorados);
   atualizar();
   redirect("/mais/compras");
+}
+
+/** Grava a memória "texto da nota → ingrediente" para a próxima leitura (SPEC §7). */
+async function lembrarProdutos(
+  supabase: Awaited<ReturnType<typeof getSupabase>>["supabase"],
+  itens: z.output<typeof compraSchema>["itens"],
+  ignorados: z.output<typeof itemNota>[],
+) {
+  const linhas = new Map<string, Record<string, unknown>>();
+  for (const i of itens) {
+    if (!i.nota) continue;
+    const chave = normalizarTexto(i.nota.texto_original);
+    linhas.set(chave, {
+      texto_normalizado: chave,
+      texto_exemplo: i.nota.texto_original,
+      codigo: i.nota.codigo,
+      ingrediente_id: i.ingrediente_id,
+      qtd_por_embalagem: i.granel ? null : i.embalagem_qtd,
+      ignorar: false,
+    });
+  }
+  for (const n of ignorados) {
+    const chave = normalizarTexto(n.texto_original);
+    if (!linhas.has(chave)) {
+      linhas.set(chave, { texto_normalizado: chave, texto_exemplo: n.texto_original, codigo: n.codigo, ingrediente_id: null, qtd_por_embalagem: null, ignorar: true });
+    }
+  }
+  if (linhas.size === 0) return;
+  // a compra já foi salva; falha aqui só faz o app "esquecer" o vínculo
+  const { error } = await supabase.from("produtos").upsert([...linhas.values()], { onConflict: "user_id,texto_normalizado" });
+  if (error) console.error("Falha ao gravar memória de produtos", error);
+}
+
+export type NotaParaRevisar = {
+  data: string | null;
+  local: string | null;
+  total: number | null;
+  foto_path: string;
+  linhas: LinhaSugerida[];
+};
+
+const TIPOS_FOTO = ["image/jpeg", "image/png", "image/webp"];
+
+/** Recebe a foto da nota, guarda no Storage e devolve os itens lidos pela IA já cruzados com a memória. */
+export async function lerNota(form: FormData): Promise<{ erro: string } | { nota: NotaParaRevisar }> {
+  const foto = form.get("foto");
+  if (!(foto instanceof File) || foto.size === 0) return { erro: "Envie a foto da nota." };
+  if (!TIPOS_FOTO.includes(foto.type)) return { erro: "Formato de imagem não suportado." };
+  if (foto.size > 4 * 1024 * 1024) return { erro: "Foto muito grande." };
+
+  const { supabase, user } = await getSupabase();
+  const bytes = Buffer.from(await foto.arrayBuffer());
+  const caminho = `${user.id}/${crypto.randomUUID()}.${foto.type.split("/")[1]}`;
+
+  const [upload, ingredientes, produtos] = await Promise.all([
+    supabase.storage.from("notas").upload(caminho, bytes, { contentType: foto.type }),
+    supabase.from("ingredientes").select("id, nome, unidade_base"),
+    supabase.from("produtos").select("texto_normalizado, codigo, ingrediente_id, qtd_por_embalagem, ignorar"),
+  ]);
+  if (upload.error) return { erro: `Não consegui guardar a foto: ${upload.error.message}` };
+  if (ingredientes.error) return { erro: mensagem(ingredientes.error) };
+  if (produtos.error) return { erro: mensagem(produtos.error) };
+
+  let lida;
+  try {
+    lida = await lerNotaComGemini({ base64: bytes.toString("base64"), mimeType: foto.type }, ingredientes.data);
+  } catch (e) {
+    console.error("Falha na leitura da nota", e);
+    return { erro: "A IA não conseguiu ler a nota agora. Tente de novo ou registre a compra à mão." };
+  }
+  if (lida.itens.length === 0) return { erro: "Não encontrei itens nessa foto. Tente uma foto mais nítida e reta." };
+
+  return {
+    nota: {
+      data: lida.data,
+      local: lida.local,
+      total: lida.total,
+      foto_path: caminho,
+      linhas: sugerirLinhas(lida.itens, produtos.data, ingredientes.data),
+    },
+  };
 }
 
 export async function excluirCompra(id: string): Promise<Estado> {

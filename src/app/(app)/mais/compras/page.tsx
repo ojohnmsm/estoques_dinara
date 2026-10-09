@@ -15,7 +15,11 @@ export default async function PaginaCompras() {
 
   return (
     <>
-      <Cabecalho titulo="Compras" voltar="/mais" acao={<Link href="/mais/compras/nova" className="btn-primario min-h-10 px-3 text-sm">+ Nova</Link>} />
+      <Cabecalho titulo="Compras" voltar="/mais" />
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <Link href="/mais/compras/nota" className="btn-primario">📷 Ler nota</Link>
+        <Link href="/mais/compras/nova" className="btn-secundario">Digitar compra</Link>
+      </div>
       {data.length === 0 && <p className="text-neutral-500">Nenhuma compra registrada. A compra é o que dá o preço dos ingredientes.</p>}
       <ul className="space-y-2">
         {data.map((c) => {

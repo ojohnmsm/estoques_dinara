@@ -250,8 +250,8 @@ Diretrizes de UI: alvos de toque ≥ 44px, valores em R$ no formato brasileiro, 
 - [ ] Deploy na Vercel funcionando no celular.
 
 ### Fase 2: nota por foto
-- [ ] Upload e leitura com Gemini, com schema JSON.
-- [ ] Tela de revisão com memória de produtos (verde/amarelo/ignorar).
+- [x] Upload e leitura com Gemini, com schema JSON (`src/lib/gemini.ts`, modelo em `GEMINI_MODEL`, padrão `gemini-flash-latest`).
+- [x] Tela de revisão com memória de produtos (verde/amarelo/ignorar), criação de ingrediente na própria tela.
 - [ ] Testado com pelo menos 3 cupons reais de mercados diferentes, incluindo item a granel.
 
 ## 10. Questões em aberto
