@@ -8,14 +8,14 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Sacolés",
-  description: "Controle de estoque, custo e vendas de sacolé",
+  title: "Casal Gourmet",
+  description: "Estoque, custo e vendas de sacolé — Casal Gourmet AeM",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#db2777",
+  themeColor: "#60b8de",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

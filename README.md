@@ -1,4 +1,4 @@
-# Estoques Dinara — Sacolés
+# Casal Gourmet — controle de sacolés
 
 App web (mobile-first) para controlar custo, estoque e vendas de sacolé. A especificação completa, com as regras de negócio, está em [`SPEC.md`](SPEC.md).
 

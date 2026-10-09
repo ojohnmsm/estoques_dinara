@@ -102,7 +102,7 @@ export function FormCompra({ ingredientes, hoje }: { ingredientes: Ingrediente[]
               <>
                 {podeGranel && (
                   <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={l.granel} onChange={(e) => mudar(idx, { granel: e.target.checked })} className="h-5 w-5 accent-pink-600" />
+                    <input type="checkbox" checked={l.granel} onChange={(e) => mudar(idx, { granel: e.target.checked })} className="h-5 w-5 accent-rosa-forte" />
                     Comprado a granel / por peso (fruta, por exemplo)
                   </label>
                 )}

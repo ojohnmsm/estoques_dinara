@@ -36,7 +36,7 @@ export function FormLogin({ permitirCadastro }: { permitirCadastro: boolean }) {
         <button
           type="button"
           onClick={() => setModo(modo === "entrar" ? "criar" : "entrar")}
-          className="w-full text-sm text-pink-700 underline"
+          className="w-full text-sm text-azul underline"
         >
           {modo === "entrar" ? "Primeiro acesso? Criar conta" : "Já tenho conta"}
         </button>

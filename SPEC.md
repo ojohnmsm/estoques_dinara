@@ -11,7 +11,7 @@ App web mobile-first para uma vendedora de sacolé controlar:
 3. **Vendas**: o que entrou, por sabor e forma de pagamento.
 4. **Lucro**: faturamento − custo do que foi vendido.
 
-Usuária única (19 anos), usando o navegador do celular.
+Usuária única (19 anos), usando o navegador do celular. Marca: **Casal Gourmet AeM** (logo em `public/logo.png`; cores azul `#1179ae`, azul-claro `#60b8de` e rosa `#fb1166`).
 
 ## 2. Escopo
 
@@ -255,6 +255,5 @@ Diretrizes de UI: alvos de toque ≥ 44px, valores em R$ no formato brasileiro, 
 - [ ] Testado com pelo menos 3 cupons reais de mercados diferentes, incluindo item a granel.
 
 ## 10. Questões em aberto
-- Nome do app / identidade visual.
 - Custos indiretos (gás, energia, transporte): incluir como "custo fixo por lote"?
 - Conferir os termos de uso de dados do plano da API do Gemini que for usado.

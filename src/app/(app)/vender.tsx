@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useTransition } from "react";
 import type { SaborComEstoque } from "@/lib/dados";
 import { brl, FORMAS, horaBR, parseNumero } from "@/lib/formato";
@@ -50,13 +51,16 @@ export function Vender({ sabores, vendasHoje }: { sabores: SaborComEstoque[]; ve
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Vender</h1>
+      <header className="flex items-center gap-3">
+        <Image src="/logo.png" alt="Casal Gourmet" width={44} height={44} />
+        <h1 className="text-2xl font-bold text-azul-escuro">Vender</h1>
+      </header>
 
       <ul className="grid grid-cols-2 gap-3">
         {sabores.map((s) => {
           const q = carrinho[s.id] ?? 0;
           return (
-            <li key={s.id} className={`cartao relative p-0 ${q > 0 ? "border-pink-500 ring-2 ring-pink-200" : ""}`}>
+            <li key={s.id} className={`cartao relative p-0 ${q > 0 ? "border-rosa ring-2 ring-rosa/25" : ""}`}>
               <button type="button" onClick={() => mudar(s.id, 1)} className="w-full p-3 text-left">
                 <span className="block font-semibold leading-tight">{s.nome}</span>
                 <span className="block text-sm text-neutral-600">{brl(s.preco_venda)}</span>
@@ -110,7 +114,7 @@ export function Vender({ sabores, vendasHoje }: { sabores: SaborComEstoque[]; ve
                 role="radio"
                 aria-checked={forma === f.valor}
                 onClick={() => setForma(f.valor)}
-                className={`btn ${forma === f.valor ? "bg-pink-600 text-white" : "border border-neutral-300 bg-white"}`}
+                className={`btn ${forma === f.valor ? "bg-rosa-forte text-white" : "border border-neutral-300 bg-white"}`}
               >
                 {f.rotulo}
               </button>

@@ -125,7 +125,7 @@ export default async function PaginaResumo({ searchParams }: PageProps<"/resumo"
 
 function Indicador({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
   return (
-    <div className={`cartao ${destaque ? "border-pink-300 bg-pink-50" : ""}`}>
+    <div className={`cartao ${destaque ? "border-azul-claro bg-ceu" : ""}`}>
       <p className="text-sm text-neutral-600">{rotulo}</p>
       <p className="text-xl font-bold tabular-nums">{valor}</p>
     </div>

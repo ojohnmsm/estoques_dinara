@@ -67,7 +67,7 @@ export function FormProducao({ sabor, hoje }: { sabor: SaborComEstoque; hoje: st
         />
       </div>
 
-      <div className="cartao bg-pink-50">
+      <div className="cartao bg-ceu">
         <p className="flex justify-between"><span>Custo do lote</span><strong>{brl(custoTotal)}</strong></p>
         <p className="flex justify-between"><span>Custo por sacolé</span><strong>{brl(custoUnit)}</strong></p>
         {sabor.custo_incompleto && (

@@ -1,14 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fdf7f9;
-  --foreground: #1f1a1c;
+  --background: #f2f9fd;
+  --foreground: #1a2630;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
+
+  /* Cores da marca Casal Gourmet (tiradas do logo) */
+  --color-rosa: #fb1166;        /* decorativo: bordas, destaques */
+  --color-rosa-forte: #d10b54;  /* botões e texto sobre branco (contraste AA) */
+  --color-rosa-escuro: #b0094a;
+  --color-azul: #1179ae;        /* títulos, aba ativa */
+  --color-azul-escuro: #0e6694;
+  --color-azul-claro: #60b8de;
+  --color-ceu: #e4f3fb;         /* fundos de destaque */
 }
 
 body {
@@ -18,7 +27,7 @@ body {
 
 /* Componentes básicos reutilizados nas telas */
 @utility campo {
-  @apply w-full rounded-xl border border-neutral-300 bg-white px-3 py-3 text-base outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-200;
+  @apply w-full rounded-xl border border-neutral-300 bg-white px-3 py-3 text-base outline-none focus:border-azul focus:ring-2 focus:ring-azul-claro/40;
 }
 
 @utility rotulo {
@@ -30,7 +39,7 @@ body {
 }
 
 @utility btn-primario {
-  @apply btn bg-pink-600 text-white hover:bg-pink-700;
+  @apply btn bg-rosa-forte text-white hover:bg-rosa-escuro;
 }
 
 @utility btn-secundario {

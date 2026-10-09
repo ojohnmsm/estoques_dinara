@@ -127,7 +127,7 @@ export function FormSabor({ sabor, ingredientes }: { sabor?: Sabor; ingredientes
         )}
       </section>
 
-      <section className="cartao space-y-1 bg-pink-50">
+      <section className="cartao space-y-1 bg-ceu">
         <p className="flex justify-between"><span>Custo da receita</span><strong>{brl(receita.total)}</strong></p>
         <p className="flex justify-between"><span>Custo por sacolé</span><strong>{custoSacole == null ? "—" : brl(custoSacole)}</strong></p>
         <p className="flex justify-between"><span>Margem</span><strong>{pct(margem)}</strong></p>
@@ -135,7 +135,7 @@ export function FormSabor({ sabor, ingredientes }: { sabor?: Sabor; ingredientes
       </section>
 
       <label className="flex items-center gap-3">
-        <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} className="h-5 w-5 accent-pink-600" />
+        <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} className="h-5 w-5 accent-rosa-forte" />
         Sabor ativo (aparece na tela de venda)
       </label>
 

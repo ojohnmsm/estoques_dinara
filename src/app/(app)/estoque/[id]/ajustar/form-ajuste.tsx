@@ -20,7 +20,7 @@ export function FormAjuste({ saborId, estoque }: { saborId: string; estoque: num
         <legend className="rotulo">Motivo</legend>
         {(Object.keys(MOTIVOS) as Motivo[]).map((m) => (
           <label key={m} className="cartao flex items-center gap-3 py-3">
-            <input type="radio" name="motivo" value={m} checked={motivo === m} onChange={() => setMotivo(m)} className="h-5 w-5 accent-pink-600" />
+            <input type="radio" name="motivo" value={m} checked={motivo === m} onChange={() => setMotivo(m)} className="h-5 w-5 accent-rosa-forte" />
             {MOTIVOS[m]}
           </label>
         ))}
@@ -29,10 +29,10 @@ export function FormAjuste({ saborId, estoque }: { saborId: string; estoque: num
       {motivo === "outro" && (
         <div className="grid grid-cols-2 gap-2">
           <label className="cartao flex items-center gap-2 py-3">
-            <input type="radio" name="direcao" value="saida" defaultChecked className="h-5 w-5 accent-pink-600" /> Tirar
+            <input type="radio" name="direcao" value="saida" defaultChecked className="h-5 w-5 accent-rosa-forte" /> Tirar
           </label>
           <label className="cartao flex items-center gap-2 py-3">
-            <input type="radio" name="direcao" value="entrada" className="h-5 w-5 accent-pink-600" /> Somar
+            <input type="radio" name="direcao" value="entrada" className="h-5 w-5 accent-rosa-forte" /> Somar
           </label>
         </div>
       )}

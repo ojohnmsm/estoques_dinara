@@ -22,7 +22,7 @@ export function BarraNav() {
               <Link
                 href={aba.href}
                 className={`flex min-h-14 flex-col items-center justify-center text-xs font-medium ${
-                  ativa ? "text-pink-700" : "text-neutral-500"
+                  ativa ? "text-azul" : "text-neutral-500"
                 }`}
               >
                 <span aria-hidden className="text-xl leading-none">{aba.icone}</span>

@@ -8,7 +8,7 @@ export function Cabecalho({ titulo, voltar, acao }: { titulo: string; voltar?: s
           ‹
         </Link>
       )}
-      <h1 className="flex-1 text-2xl font-bold">{titulo}</h1>
+      <h1 className="flex-1 text-2xl font-bold text-azul-escuro">{titulo}</h1>
       {acao}
     </header>
   );

@@ -35,7 +35,7 @@ export function FormIngrediente({
                 required
                 defaultChecked={ingrediente?.unidade_base === u.valor}
                 disabled={ingrediente?.emUso && ingrediente.unidade_base !== u.valor}
-                className="h-5 w-5 accent-pink-600"
+                className="h-5 w-5 accent-rosa-forte"
               />
               <span>
                 <span className="block font-medium">{u.rotulo}</span>
