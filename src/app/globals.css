@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fdf7f9;
+  --foreground: #1f1a1c;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Componentes básicos reutilizados nas telas */
+@utility campo {
+  @apply w-full rounded-xl border border-neutral-300 bg-white px-3 py-3 text-base outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-200;
+}
+
+@utility rotulo {
+  @apply mb-1 block text-sm font-medium text-neutral-700;
+}
+
+@utility btn {
+  @apply inline-flex min-h-12 items-center justify-center rounded-xl px-4 font-semibold transition active:scale-[0.98] disabled:opacity-50;
+}
+
+@utility btn-primario {
+  @apply btn bg-pink-600 text-white hover:bg-pink-700;
+}
+
+@utility btn-secundario {
+  @apply btn border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50;
+}
+
+@utility btn-perigo {
+  @apply btn border border-red-300 bg-white text-red-700 hover:bg-red-50;
+}
+
+@utility cartao {
+  @apply rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm;
+}

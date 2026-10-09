@@ -1,6 +1,6 @@
 # Estoques Dinara — Especificação
 
-> Status: rascunho v1 (2026-10-09). Documento vivo: toda decisão nova entra aqui antes de virar código.
+> Status: v1.1 (2026-10-09), fase 1 implementada. Documento vivo: toda decisão nova entra aqui antes de virar código.
 
 ## 1. Visão
 
@@ -67,7 +67,8 @@ Dinheiro: `numeric(12,2)`. Custos unitários: `numeric(14,6)`.
 ```
 ingredientes
   nome                 text unique por usuário
-  unidade_base         enum('g','ml','un')
+  unidade_base         enum('g','ml','un')         -- não muda depois de usado (trigger)
+  embalagem_padrao     numeric null             -- última embalagem comprada; pré-preenche a compra
   custo_unitario       numeric(14,6) null      -- R$ por unidade base; null = sem preço ainda
   custo_atualizado_em  timestamptz null
 
@@ -91,7 +92,9 @@ itens_compra
   ingrediente_id       fk ingredientes
   produto_id           fk produtos null
   texto_original       text null
+  granel               boolean
   qtd_embalagens       numeric                  -- ou peso em kg/l para itens a granel
+  embalagem_qtd        numeric null             -- tamanho da embalagem na unidade base
   qtd_base_total       numeric                  -- já convertido p/ unidade base
   valor_total          numeric(12,2)
   custo_unitario       numeric(14,6)            -- valor_total / qtd_base_total
@@ -100,15 +103,12 @@ sabores
   nome                 text unique por usuário
   preco_venda          numeric(12,2)
   estoque_minimo       int default 0            -- alerta "hora de produzir"
+  rendimento_esperado  int                      -- quantos sacolés uma receita rende
   custo_medio          numeric(14,6) default 0  -- custo médio do estoque atual (ver §6.3)
   ativo                boolean default true
 
-receitas                                        -- 1 receita por sabor nesta versão
-  sabor_id             fk sabores unique
-  rendimento_esperado  int
-
-itens_receita
-  receita_id           fk receitas on delete cascade
+itens_receita                                   -- a receita do sabor (1 por sabor nesta versão)
+  sabor_id             fk sabores on delete cascade
   ingrediente_id       fk ingredientes
   qtd_base             numeric
 
@@ -119,8 +119,10 @@ producoes
   qtd_produzida        int  check > 0
   custo_total          numeric(12,2)            -- snapshot
   custo_unitario       numeric(14,6)            -- custo_total / qtd_produzida
+  custo_incompleto     boolean                  -- algum ingrediente estava sem preço
 
 vendas
+  grupo                uuid                     -- linhas registradas juntas (mesmo pagamento)
   sabor_id             fk sabores
   data_hora            timestamptz default now()
   qtd                  int check > 0
@@ -136,6 +138,8 @@ ajustes_estoque
   observacao           text null
   custo_unitario       numeric(14,6)            -- snapshot do custo médio
 ```
+
+**View `custo_sabores`**: custo da receita com os preços atuais e se está incompleto.
 
 **View `estoque_sabores`**: `estoque = Σ producoes.qtd_produzida − Σ vendas.qtd + Σ ajustes.delta`, por sabor. O estoque **nunca** é digitado nem guardado solto.
 
